@@ -306,8 +306,7 @@ namespace SubSonic.Repository
             foreach(T item in items)
             {
                 var query = item.ToDeleteQuery(provider);
-                if(query != null)
-                    bQuery.Queue(query);
+                bQuery.Queue(query);
             }
             result = bQuery.Execute();
             return result;

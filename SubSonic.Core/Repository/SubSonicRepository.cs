@@ -54,18 +54,10 @@ namespace SubSonic.Repository
         public bool Load<T>(T item, string column, object value) where T : class, new()
         {
             var qry = _db.Select.From(GetTable()).Where(column).IsEqualTo(value);
-            bool loaded = false;
-            using(var rdr = qry.ExecuteReader())
-            {
-                if(rdr.Read())
-                {
-                    rdr.Load(item);
-                    loaded = true;
-                }
-                rdr.Dispose();
-            }
-            return loaded;
+            return LoadQuery<T>(item, qry);
         }
+
+        
 
         /// <summary>
         /// Loads a T object
@@ -77,17 +69,28 @@ namespace SubSonic.Repository
         public bool Load<T>(T item, Expression<Func<T, bool>> expression) where T : class, new()
         {
             var qry = _db.Select.From(GetTable()).Where(expression);
-            bool loaded = false;
-            using(var rdr = qry.ExecuteReader())
+            return LoadQuery<T>(item, qry);
+        }
+
+        /// <summary>
+        /// Loads a query
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="item">The item. </param>
+        /// <param name="qry">The SQLQuery to be loaded</param>
+        /// <returns>Whether the operation is successful.</returns>
+        private static bool LoadQuery<T>(T item, SqlQuery qry) where T : class, new()
+        {
+            using (var rdr = qry.ExecuteReader())
             {
-                if(rdr.Read())
+                if (rdr.Read())
                 {
                     rdr.Load(item);
-                    loaded = true;
+                    return true;
                 }
-                rdr.Dispose();
+                rdr.Dispose(); //Since it's in a "using" block, do we really need a Dispose here?
             }
-            return loaded;
+            return false;
         }
 
         /// <summary>

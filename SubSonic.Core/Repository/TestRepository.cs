@@ -21,7 +21,7 @@ using SubSonic.Schema;
 
 namespace SubSonic.Repository
 {
-    public class TestRepository<T> : IRepository<T> where T : IActiveRecord, new()
+    public class TestRepository<T> : IRepository<T> where T : class, IActiveRecord, new()
     {
         private IQuerySurface _db;
         public List<T> _items;
@@ -97,7 +97,7 @@ namespace SubSonic.Repository
             return _db.FindTable(typeof(T).Name);
         }
 
-        public bool Load<T>(T item, string column, object value) where T : class, new()
+        public bool Load(T item, string column, object value) 
         {
             if(item is IActiveRecord)
             {
@@ -117,7 +117,7 @@ namespace SubSonic.Repository
             return true;
         }
 
-        public bool Load<T>(T item, Expression<Func<T, bool>> expression) where T : class, new()
+        public bool Load(T item, Expression<Func<T, bool>> expression)
         {
             return true;
         }

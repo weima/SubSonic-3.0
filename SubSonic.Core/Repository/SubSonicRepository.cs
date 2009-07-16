@@ -51,10 +51,10 @@ namespace SubSonic.Repository
         /// <param name="column">The column.</param>
         /// <param name="value">The value.</param>
         /// <returns></returns>
-        public bool Load<T>(T item, string column, object value) where T : class, new()
+        public bool Load(T item, string column, object value)
         {
             var qry = _db.Select.From(GetTable()).Where(column).IsEqualTo(value);
-            return LoadQuery<T>(item, qry);
+            return LoadQuery(item, qry);
         }
 
         
@@ -66,10 +66,10 @@ namespace SubSonic.Repository
         /// <param name="item">The item.</param>
         /// <param name="expression">The expression.</param>
         /// <returns></returns>
-        public bool Load<T>(T item, Expression<Func<T, bool>> expression) where T : class, new()
+        public bool Load(T item, Expression<Func<T, bool>> expression)
         {
             var qry = _db.Select.From(GetTable()).Where(expression);
-            return LoadQuery<T>(item, qry);
+            return LoadQuery(item, qry);
         }
 
         /// <summary>
@@ -79,7 +79,7 @@ namespace SubSonic.Repository
         /// <param name="item">The item. </param>
         /// <param name="qry">The SQLQuery to be loaded</param>
         /// <returns>Whether the operation is successful.</returns>
-        private static bool LoadQuery<T>(T item, SqlQuery qry) where T : class, new()
+        private static bool LoadQuery(T item, SqlQuery qry) 
         {
             using (var rdr = qry.ExecuteReader())
             {
@@ -218,7 +218,7 @@ namespace SubSonic.Repository
             return result;
         }
 
-                /// <summary>
+        /// <summary>
         /// Adds a bunch of T items 
         ///</summary>
         public void Add(IEnumerable<T> items) {
@@ -226,19 +226,13 @@ namespace SubSonic.Repository
 
         }
 
-
+      
         /// <summary>
         /// Adds a bunch of T items 
         ///</summary>
         public void Add(IEnumerable<T> items, IDataProvider provider)
         {
-            BatchQuery bQuery = new BatchQuery(provider);
-            foreach(T item in items)
-            {
-                var query = item.ToInsertQuery(provider);
-                bQuery.Queue(query);
-            }
-            bQuery.Execute();
+            RunQueryWithToQueryFunc(new ToSqlQuery(ToInsertQuery), items, provider);
         }
 
         /// <summary>
@@ -274,16 +268,7 @@ namespace SubSonic.Repository
         /// </summary>
         public int Update(IEnumerable<T> items, IDataProvider provider)
         {
-            BatchQuery bQuery = new BatchQuery(provider);
-            int result = 0;
-
-            foreach(T item in items)
-            {
-                var query = item.ToUpdateQuery(provider);
-                bQuery.Queue(query);
-            }
-            result = bQuery.Execute();
-            return result;
+            return RunQueryWithToQueryFunc(new ToSqlQuery(ToUpdateQuery), items, provider);
         }
 
                 /// <summary>
@@ -300,17 +285,11 @@ namespace SubSonic.Repository
         /// </summary>
         public int Delete(IEnumerable<T> items, IDataProvider provider)
         {
-            BatchQuery bQuery = new BatchQuery(provider);
-            int result = 0;
-
-            foreach(T item in items)
-            {
-                var query = item.ToDeleteQuery(provider);
-                bQuery.Queue(query);
-            }
-            result = bQuery.Execute();
-            return result;
+            return RunQueryWithToQueryFunc(new ToSqlQuery(ToDeleteQuery), items, provider);
         }
+
+
+        
 
         /// <summary>
         /// Deletes the passed-in T item 
@@ -368,7 +347,46 @@ namespace SubSonic.Repository
             var cmd= _db.Delete(expression).GetCommand();
             return provider.ExecuteQuery(cmd);
         }
-
         #endregion
+
+        #region delegate methods
+        private delegate ISqlQuery ToSqlQuery(T item, IDataProvider provider);
+
+        private ISqlQuery ToInsertQuery(T item, IDataProvider provider)
+        {
+            return item.ToInsertQuery(provider);
+        }
+
+        private ISqlQuery ToDeleteQuery(T item, IDataProvider provider)
+        {
+            return item.ToDeleteQuery(provider);
+        }
+
+        private ISqlQuery ToUpdateQuery(T item, IDataProvider provider)
+        {
+            return item.ToUpdateQuery(provider);
+        }
+        #endregion
+
+        /// <summary>
+        /// Run query with provided function
+        /// </summary>
+        /// <param name="func">A function to get query</param>
+        /// <param name="items">The items </param>
+        /// <param name="provider">The provider</param>
+        /// <returns></returns>
+        private int RunQueryWithToQueryFunc(ToSqlQuery func, IEnumerable<T> items, IDataProvider provider)
+        {
+            BatchQuery bQuery = new BatchQuery(provider);
+            int result = 0;
+
+            foreach (T item in items)
+            {
+                var query = func(item, provider);
+                bQuery.Queue(query);
+            }
+            result = bQuery.Execute();
+            return result;
+        }
     }
 }
